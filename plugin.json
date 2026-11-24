@@ -1,0 +1,18 @@
+{
+  "name": "token-meter",
+  "displayName": "Token Meter",
+  "version": "0.3.0",
+  "description": "Native Antigravity MCP App dashboard for visualizing local token usage, estimated API cost, Ultra subscription value, project aggregation, and per-prompt turn costs.",
+  "author": {
+    "name": "DaDerekkk",
+    "url": "https://github.com/DaDerekkk"
+  },
+  "homepage": "https://github.com/DaDerekkk/antigravity-token-meter",
+  "repository": "https://github.com/DaDerekkk/antigravity-token-meter",
+  "logo": "assets/logo.svg",
+  "suggestedPrompts": [
+    "Open Token Meter to check my token usage and cost over the last 7 days",
+    "Show today's token consumption and per-prompt cost in Token Meter",
+    "Which project and conversations used the most tokens this month?"
+  ]
+}

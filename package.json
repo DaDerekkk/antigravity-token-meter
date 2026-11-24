@@ -1,0 +1,20 @@
+{
+  "name": "antigravity-token-meter",
+  "version": "0.1.0",
+  "description": "Native Antigravity MCP App plugin for visualizing local token usage, cache hit rate, model breakdown, top conversations, and RTK savings.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node scripts/test.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^0.4.1",
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "typescript": "^5.8.0"
+  }
+}

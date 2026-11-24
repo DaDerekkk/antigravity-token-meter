@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Token Meter</title>
+  <style>
+    :root {
+      --bg: var(--color-background-primary, #ffffff);
+      --bg-card: var(--color-background-secondary, #f6f7f9);
+      --bg-chip: var(--color-background-tertiary, #eceef2);
+      --text: var(--color-text-primary, #17191c);
+      --text-2: var(--color-text-secondary, #5a6270);
+      --text-3: var(--color-text-tertiary, #848d9b);
+      --border: var(--color-border-primary, rgba(0, 0, 0, 0.1));
+      --accent: #3b82f6;
+      --accent-cache: #10b981;
+      --accent-out: #f59e0b;
+      --accent-cost: #8b5cf6;
+      --radius: 10px;
+      font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+    }
+    [data-theme="dark"] {
+      --bg: var(--color-background-primary, #131519);
+      --bg-card: var(--color-background-secondary, #1c1f26);
+      --bg-chip: var(--color-background-tertiary, #252a34);
+      --text: var(--color-text-primary, #eef1f6);
+      --text-2: var(--color-text-secondary, #a2abb8);
+      --text-3: var(--color-text-tertiary, #737d8c);
+      --border: var(--color-border-primary, rgba(255, 255, 255, 0.1));
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.45;
+      padding: 14px;
+    }
+    .wrap { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+    .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+
+    .seg {
+      display: inline-flex;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 2px;
+      gap: 2px;
+    }
+    .seg button, .btn-refresh, .plan-select, .btn-link {
+      appearance: none;
+      border: none;
+      background: transparent;
+      color: var(--text-2);
+      font: inherit;
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .seg button:hover, .btn-refresh:hover, .btn-link:hover { color: var(--text); background: var(--bg-chip); }
+    .seg button.active {
+      background: var(--accent);
+      color: #ffffff;
+      font-weight: 500;
+    }
+    .btn-refresh, .plan-select {
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text);
+      padding: 5px 9px;
+    }
+    .btn-link { color: var(--accent); font-size: 11px; padding: 2px 6px; }
+    .btn-refresh:disabled { opacity: 0.55; cursor: wait; }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+      gap: 10px;
+    }
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+    }
+    .kpi-label { font-size: 11px; color: var(--text-2); letter-spacing: 0.02em; }
+    .kpi-val { font-size: 21px; font-weight: 700; margin: 4px 0 2px; letter-spacing: -0.02em; }
+    .kpi-val-cost { color: var(--accent-cost); }
+    .kpi-val-ultra { color: var(--accent-cache); }
+    .kpi-sub { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .section-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .section-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .count-pill { font-size: 11px; font-weight: 400; color: var(--text-3); }
+
+    .projects-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 8px;
+    }
+    .proj-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 11px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .proj-card:hover { border-color: var(--accent); }
+    .proj-card.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+    .proj-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 5px; }
+    .proj-name { font-weight: 600; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .proj-cost { font-weight: 700; font-size: 12.5px; white-space: nowrap; }
+    .proj-meta { display: flex; justify-content: space-between; gap: 6px; font-size: 11px; color: var(--text-3); margin-top: 4px; }
+
+    .conv-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .search-input {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 4px 9px;
+      font: inherit;
+      font-size: 12px;
+      min-width: 150px;
+      outline: none;
+    }
+    .search-input:focus { border-color: var(--accent); }
+
+    .conv-list { max-height: 520px; overflow-y: auto; }
+    .conv-item { border-bottom: 1px solid var(--border); }
+    .conv-item:last-child { border-bottom: none; }
+    .conv-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 9px 4px;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: background 0.12s;
+    }
+    .conv-row:hover { background: var(--bg-chip); }
+    .conv-main { min-width: 0; flex: 1; }
+    .conv-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .conv-sub { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px; color: var(--text-3); margin-top: 3px; align-items: center; }
+    .conv-metrics { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px; color: var(--text-2); margin-top: 3px; }
+    .conv-metrics b { color: var(--text); font-weight: 600; }
+
+    .badge {
+      background: var(--bg-chip);
+      color: var(--text-2);
+      padding: 0 5px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      font-size: 10px;
+      font-weight: 500;
+    }
+    .badge-model { text-transform: none; }
+    .badge-proj { text-transform: none; color: var(--accent); background: rgba(59, 130, 246, 0.12); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .conv-cost { text-align: right; white-space: nowrap; flex-shrink: 0; }
+    .cost-usd { font-weight: 700; font-size: 14px; color: var(--text); }
+    .cost-cny { font-weight: 400; font-size: 11px; color: var(--text-2); margin-left: 3px; }
+    .cost-ultra { font-size: 11px; color: var(--accent-cache); margin-top: 2px; font-weight: 500; }
+
+    .conv-detail {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 10px 12px;
+      margin: 0 4px 10px;
+      font-size: 11.5px;
+    }
+    .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 5px 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .detail-grid > div { display: flex; justify-content: space-between; gap: 8px; }
+    .d-label { color: var(--text-2); }
+
+    .turns-head { font-weight: 600; font-size: 11.5px; color: var(--text-2); margin: 8px 0 6px; }
+    .turns-loading { color: var(--text-3); padding: 8px 0; font-size: 11px; }
+    .turns-list { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; }
+    .turn-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 6px 8px;
+      background: var(--bg-card);
+      border-radius: 6px;
+    }
+    .turn-main { min-width: 0; flex: 1; }
+    .turn-prompt { font-size: 12px; color: var(--text); word-break: break-word; }
+    .turn-idx { font-weight: 700; color: var(--accent); margin-right: 4px; }
+    .turn-sub { display: flex; flex-wrap: wrap; gap: 8px; font-size: 10.5px; color: var(--text-3); margin-top: 2px; }
+    .turn-cost { text-align: right; white-space: nowrap; flex-shrink: 0; }
+    .turn-usd { font-weight: 600; font-size: 12.5px; }
+    .turn-ultra { font-size: 10.5px; color: var(--accent-cache); }
+
+    .legend { display: flex; gap: 10px; font-size: 11px; color: var(--text-2); }
+    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+    .dot-cache { background: var(--accent-cache); }
+    .dot-input { background: var(--accent); }
+    .dot-out { background: var(--accent-out); }
+
+    .readout { font-size: 11px; color: var(--text-2); margin-bottom: 6px; min-height: 16px; }
+    .chart-svg { width: 100%; height: 150px; display: block; }
+    .axis-line { stroke: var(--border); stroke-width: 1; }
+    .axis-label { fill: var(--text-3); font-size: 10px; }
+    .seg-cache { fill: var(--accent-cache); opacity: 0.88; }
+    .seg-input { fill: var(--accent); opacity: 0.92; }
+    .seg-output { fill: var(--accent-out); opacity: 0.95; }
+    .bar-group:hover rect { opacity: 1; filter: brightness(1.08); }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .model-row { padding: 7px 0; border-bottom: 1px solid var(--border); }
+    .model-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .model-head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+    .model-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .model-meta { font-size: 11px; color: var(--text-2); white-space: nowrap; }
+    .bar-track { height: 6px; background: var(--bg-chip); border-radius: 99px; overflow: hidden; margin-bottom: 4px; }
+    .bar-fill { height: 100%; background: var(--accent-cost); border-radius: 99px; }
+    .model-sub { display: flex; gap: 10px; font-size: 11px; color: var(--text-3); }
+
+    .empty { color: var(--text-3); padding: 20px 0; text-align: center; font-size: 12px; }
+    .footer {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-3);
+      padding: 2px 2px 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <span class="title">Token Meter</span>
+      <div class="controls">
+        <div class="seg" role="group" aria-label="Time range">
+          <button type="button" data-range="today">今天</button>
+          <button type="button" data-range="7d" class="active">7天</button>
+          <button type="button" data-range="30d">30天</button>
+          <button type="button" data-range="all">全部</button>
+        </div>
+        <div class="seg" role="group" aria-label="Source">
+          <button type="button" data-source="all" class="active">全部</button>
+          <button type="button" data-source="desktop">Desktop</button>
+          <button type="button" data-source="cli">CLI</button>
+          <button type="button" data-source="ide">IDE</button>
+        </div>
+        <select id="plan-select" class="plan-select" aria-label="Subscription plan"></select>
+        <button type="button" id="btn-refresh" class="btn-refresh">刷新</button>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="card">
+        <div class="kpi-label">折合 API 总费用</div>
+        <div class="kpi-val kpi-val-cost" id="kpi-cost">—</div>
+        <div class="kpi-sub" id="kpi-cost-sub">加载中…</div>
+      </div>
+      <div class="card">
+        <div class="kpi-label">均次提示词费用</div>
+        <div class="kpi-val" id="kpi-avg-prompt">—</div>
+        <div class="kpi-sub" id="kpi-avg-prompt-sub">—</div>
+      </div>
+      <div class="card">
+        <div class="kpi-label">Ultra 订阅价值</div>
+        <div class="kpi-val kpi-val-ultra" id="kpi-ultra">—</div>
+        <div class="kpi-sub" id="kpi-ultra-sub">—</div>
+      </div>
+      <div class="card">
+        <div class="kpi-label">总 Token 消耗</div>
+        <div class="kpi-val" id="kpi-total">—</div>
+        <div class="kpi-sub" id="kpi-total-sub">—</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-head">
+        <div class="section-title">
+          <span>按 Project 汇总（点击筛选）</span>
+          <button type="button" id="btn-clear-project" class="btn-link" style="display:none">清除项目筛选</button>
+        </div>
+      </div>
+      <div class="projects-grid" id="projects-list"><div class="empty">加载中…</div></div>
+    </div>
+
+    <div class="card">
+      <div class="section-head">
+        <div class="section-title">
+          <span>按对话查看（点击展开每次提示词费用）</span>
+          <span class="count-pill" id="conv-count"></span>
+        </div>
+        <div class="conv-toolbar">
+          <input type="search" id="conv-search" class="search-input" placeholder="搜索对话、项目或模型…" />
+          <div class="seg" role="group" aria-label="Sort conversations">
+            <button type="button" data-sort="latest" class="active">最近</button>
+            <button type="button" data-sort="cost">费用最高</button>
+            <button type="button" data-sort="tokens">Token 最多</button>
+          </div>
+        </div>
+      </div>
+      <div class="conv-list" id="conv-list"><div class="empty">加载中…</div></div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="section-head">
+          <div class="section-title">每日消耗趋势</div>
+          <div class="legend">
+            <span><i class="dot dot-cache"></i>缓存读</span>
+            <span><i class="dot dot-input"></i>输入</span>
+            <span><i class="dot dot-out"></i>输出</span>
+          </div>
+        </div>
+        <div class="readout" id="chart-readout"></div>
+        <div id="daily-chart"><div class="empty">加载中…</div></div>
+      </div>
+
+      <div class="card">
+        <div class="section-head">
+          <div class="section-title">按模型费用拆分</div>
+        </div>
+        <div id="models-list"><div class="empty">加载中…</div></div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>纯本地只读 · 费用按公开 API 费率估算，Ultra 占比按所选月费折算</span>
+      <span id="footer-updated"></span>
+    </div>
+  </div>
+  <!-- INLINE_SCRIPT -->
+</body>
+</html>

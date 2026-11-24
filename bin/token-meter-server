@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+find_node() {
+  if command -v node >/dev/null 2>&1; then
+    command -v node
+    return 0
+  fi
+  for candidate in \
+    "${HOME}/.local/node/bin/node" \
+    "/opt/homebrew/bin/node" \
+    "/usr/local/bin/node" \
+    "${HOME}/.volta/bin/node" \
+    "${HOME}/.asdf/shims/node"; do
+    if [ -x "$candidate" ]; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+  for candidate in "${HOME}"/.nvm/versions/node/*/bin/node; do
+    if [ -x "$candidate" ]; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+  echo "node not found in PATH or standard locations" >&2
+  return 1
+}
+
+NODE_BIN="$(find_node)"
+exec "$NODE_BIN" "${DIR}/../dist/server.mjs" "$@"
